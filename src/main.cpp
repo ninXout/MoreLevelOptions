@@ -12,27 +12,25 @@ struct ExtraLevelData {
 
 template <>
 struct matjson::Serialize<ExtraLevelData> {
-	#define JSON_SERIALIZE(thing) .m_##thing = value[#thing].as<bool>(),
-    static ExtraLevelData from_json(const matjson::Value& value) {
-        return ExtraLevelData {
+	#define JSON_SERIALIZE(thing) .m_##thing = value[#thing].as<bool>().unwrapOrDefault(),
+    static Result<ExtraLevelData> fromJson(const matjson::Value& value) {
+		auto data = ExtraLevelData {
             JSON_SERIALIZE(holdLevel)
 			JSON_SERIALIZE(noNewBest)
 			JSON_SERIALIZE(noGravityEffect)
         };
+        return Ok(data);
     }
 	#undef JSON_SERIALIZE
 	#define JSON_SERIALIZE(thing) { #thing, value.m_##thing },
-    static matjson::Value to_json(const ExtraLevelData& value) {
-        return matjson::Object {
+    static matjson::Value toJson(const ExtraLevelData& value) {
+        return matjson::makeObject({
             JSON_SERIALIZE(holdLevel)
 			JSON_SERIALIZE(noNewBest)
 			JSON_SERIALIZE(noGravityEffect)
-        };
+        });
     }
-
-	static bool is_json(const matjson::Value& value) {
-		return true;
-	}
+	#undef JSON_SERIALIZE
 };
 
 #include <Geode/modify/GJGameLevel.hpp>
@@ -85,7 +83,7 @@ class $modify(GameLevelOptionsLayer) {
 
 		// loading data
 		if (Mod::get()->hasSavedValue(std::to_string(m_level->m_levelID))) {
-			static_cast<MLOGameLevel*>(m_level)->m_fields->m_extraData = Mod::get()->getSavedValue<ExtraLevelData>(std::to_string(m_level->m_levelID));
+			static_cast<MLOGameLevel*>(m_level)->m_fields->m_extraData = Mod::get()->getSavedValue<ExtraLevelData>(std::to_string(m_level->m_levelID), {false, false, false});
 		}
 
 		// page 1
