@@ -1,6 +1,7 @@
 #include <Geode/Geode.hpp>
 #include <iostream>
 #include <fstream>
+#include <ninxout.options_api/include/API.hpp>
 
 using namespace geode::prelude;
 
@@ -60,78 +61,74 @@ class $modify(PlayLayer) {
 	}
 };
 
-#define MLO_TOGGLE(tog) static_cast<MLOGameLevel*>(m_level)->m_fields->m_extraData.tog = !static_cast<MLOGameLevel*>(m_level)->m_fields->m_extraData.tog;
+$on_mod(Loaded) {
+	OptionsAPI::addPreLevelSetting<bool>(
+		"Hold Level", 
+		"hold-level"_spr, 
+		[](GJGameLevel* lvl) {
+			MLOGameLevel* mlo = static_cast<MLOGameLevel*>(lvl);
+			mlo->m_fields->m_extraData.m_holdLevel = !mlo->m_fields->m_extraData.m_holdLevel;
 
-#include <Geode/modify/GameLevelOptionsLayer.hpp>
-class $modify(GameLevelOptionsLayer) {
-	static void onModify(auto& self) {
-        if (!self.setHookPriority("GameLevelOptionsLayer::setupOptions", -9999999)) {
-            geode::log::warn("Failed to set hook priority for GameLevelOptionsLayer::setupOptions");
-        }
-    }
-
-	void setupOptions() {
-		auto winSize = CCDirector::get()->getWinSize();
-
-		// title texts
-		CCLabelBMFont* levelSpec = CCLabelBMFont::create("Level Settings", "goldFont.fnt");
-		levelSpec->setPosition(ccp(winSize.width / 2.f, winSize.height - 40.f));
-		levelSpec->setScale(0.85f);
-		CCLabelBMFont* gameSpec = CCLabelBMFont::create("Game Settings", "goldFont.fnt");
-		gameSpec->setPosition(ccp(winSize.width / 2.f, winSize.height - 40.f));
-		gameSpec->setScale(0.85f);
-
-		// loading data
-		if (Mod::get()->hasSavedValue(std::to_string(m_level->m_levelID))) {
-			static_cast<MLOGameLevel*>(m_level)->m_fields->m_extraData = Mod::get()->getSavedValue<ExtraLevelData>(std::to_string(m_level->m_levelID), {false, false, false});
-		}
-
-		// page 1
-		layerForPage(0)->addChild(levelSpec, 5);
-
-		addToggle("Low Detail Mode", 1, m_level->m_lowDetailModeToggled, "Toggles off all objects marked as High Detail.");
-		addToggle("Disable Shake", 2, m_level->m_disableShakeToggled, "Disables all shake triggers in the level.");
-		addToggle("Hold Level", 3, static_cast<MLOGameLevel*>(m_level)->m_fields->m_extraData.m_holdLevel, "Automatically holds the player button while playing the level. Used for hold auto levels.");
-		addToggle("No New Best", 4, static_cast<MLOGameLevel*>(m_level)->m_fields->m_extraData.m_noNewBest, "Stops the New Best notification from showing up on new best percentages.");
-		addToggle("No Gravity Effect", 5, static_cast<MLOGameLevel*>(m_level)->m_fields->m_extraData.m_noGravityEffect, "Stops the gravity portal effect from showing.");
-
-		offsetToNextPage();
-
-		// page 2
-		layerForPage(1)->addChild(gameSpec, 5);
-
-		addGVToggle("Flip 2 player controls", "0010", "Flips the 2 player controls.");
-		addGVToggle("Fast Respawn", "0052", "Shortens the respawn time from 1.0s to 0.5s.");
-		addGVToggle("Disable Orb Scale", "0140", "Disable scaling effect when hitting an orb.");
-		addGVToggle("Hide Attempts", "0135", "Hide the attempt counter.");
-		addGVToggle("Hide Attempts in Practice", "0134", "Hide the attempt counter in practice mode.");
-	}
-
-	void didToggle(int opt) {
-		switch (opt) {
-			case 3:
-				MLO_TOGGLE(m_holdLevel);
-				break;
-			case 4:
-				MLO_TOGGLE(m_noNewBest);
-				break;
-			case 5:
-				MLO_TOGGLE(m_noGravityEffect);
-				break;
-			default:
-				return GameLevelOptionsLayer::didToggle(opt);
-		}
-
-		if (m_level->m_levelID > 0) {
-			ExtraLevelData data = static_cast<MLOGameLevel*>(m_level)->m_fields->m_extraData;
-
-			if (!data.m_holdLevel && !data.m_noNewBest && !data.m_noGravityEffect) { // TODO: make this a map or something so i can do this easier
-				Mod::get()->getSaveContainer().erase(std::to_string(m_level->m_levelID));
-			} else {
-				Mod::get()->setSavedValue<ExtraLevelData>(std::to_string(m_level->m_levelID), data);
+			if (lvl->m_levelID > 0) {
+				ExtraLevelData data = mlo->m_fields->m_extraData;
+	
+				if (!data.m_holdLevel && !data.m_noNewBest && !data.m_noGravityEffect) { // TODO: make this a map or something so i can do this easier
+					Mod::get()->getSaveContainer().erase(std::to_string(lvl->m_levelID));
+				} else {
+					Mod::get()->setSavedValue<ExtraLevelData>(std::to_string(lvl->m_levelID), data);
+				}
 			}
-		}
-	}
-};
+		},
+		[](GJGameLevel* lvl) {
+			MLOGameLevel* mlo = static_cast<MLOGameLevel*>(lvl);
+			return mlo->m_fields->m_extraData.m_holdLevel;
+		},
+		"Automatically holds the player button while playing the level. Used for hold auto levels."
+	);
+	OptionsAPI::addPreLevelSetting<bool>(
+		"No New Best", 
+		"no-new-best"_spr, 
+		[](GJGameLevel* lvl) {
+			MLOGameLevel* mlo = static_cast<MLOGameLevel*>(lvl);
+			mlo->m_fields->m_extraData.m_noNewBest = !mlo->m_fields->m_extraData.m_noNewBest;
 
-#undef MLO_TOGGLE
+			if (lvl->m_levelID > 0) {
+				ExtraLevelData data = mlo->m_fields->m_extraData;
+	
+				if (!data.m_holdLevel && !data.m_noNewBest && !data.m_noGravityEffect) { // TODO: make this a map or something so i can do this easier
+					Mod::get()->getSaveContainer().erase(std::to_string(lvl->m_levelID));
+				} else {
+					Mod::get()->setSavedValue<ExtraLevelData>(std::to_string(lvl->m_levelID), data);
+				}
+			}
+		},
+		[](GJGameLevel* lvl) {
+			MLOGameLevel* mlo = static_cast<MLOGameLevel*>(lvl);
+			return mlo->m_fields->m_extraData.m_noNewBest;
+		},
+		"Stops the New Best notification from showing up on new best percentages."
+	);
+	OptionsAPI::addPreLevelSetting<bool>(
+		"No Gravity Effect", 
+		"no-gravity-fx"_spr, 
+		[](GJGameLevel* lvl) {
+			MLOGameLevel* mlo = static_cast<MLOGameLevel*>(lvl);
+			mlo->m_fields->m_extraData.m_noGravityEffect = !mlo->m_fields->m_extraData.m_noGravityEffect;
+
+			if (lvl->m_levelID > 0) {
+				ExtraLevelData data = mlo->m_fields->m_extraData;
+	
+				if (!data.m_holdLevel && !data.m_noNewBest && !data.m_noGravityEffect) { // TODO: make this a map or something so i can do this easier
+					Mod::get()->getSaveContainer().erase(std::to_string(lvl->m_levelID));
+				} else {
+					Mod::get()->setSavedValue<ExtraLevelData>(std::to_string(lvl->m_levelID), data);
+				}
+			}
+		},
+		[](GJGameLevel* lvl) {
+			MLOGameLevel* mlo = static_cast<MLOGameLevel*>(lvl);
+			return mlo->m_fields->m_extraData.m_noGravityEffect;
+		},
+		"Stops the gravity portal effect from showing."
+	);
+};
