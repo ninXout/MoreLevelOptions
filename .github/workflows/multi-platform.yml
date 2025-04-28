@@ -26,6 +26,10 @@ jobs:
           os: ubuntu-latest
           target: Android64
 
+        - name: iOS
+          os: macos-latest
+          target: iOS
+
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
 
@@ -37,6 +41,8 @@ jobs:
         with:
           bindings: geode-sdk/bindings
           bindings-ref: main
+          sdk: nightly
+          cli: nightly
           combine: true
           target: ${{ matrix.config.target }}
 
